@@ -4,22 +4,18 @@
 
 package gltext
 
-import (
-	"fmt"
-	"image"
-	"unsafe"
-
-	"github.com/go-gl/gl/v2.1/gl"
-)
+import "image"
 
 // A Font allows rendering of text to an OpenGL context.
 type Font struct {
 	config         *FontConfig // Character set for this font.
 	texture        uint32      // Holds the glyph texture id.
-	listbase       uint32      // Holds the first display list id.
 	maxGlyphWidth  int         // Largest glyph width.
 	maxGlyphHeight int         // Largest glyph height.
+	texturePayload interface{} // Texture data populated by LoadTextureFunc
 }
+
+type LoadTextureFunc func(rgba *image.RGBA) (texId uint32, texPayload interface{}, err error)
 
 // loadFont loads the given font data. This does not deal with font scaling.
 // Scaling should be handled by the independent Bitmap/Truetype loaders.
@@ -28,30 +24,35 @@ type Font struct {
 //
 // The image should hold a sprite sheet, defining the graphical layout for
 // every glyph. The config describes font metadata.
-func loadFont(img *image.RGBA, config *FontConfig) (f *Font, err error) {
+func loadFont(img *image.RGBA, config *FontConfig, loadTexture LoadTextureFunc) (f *Font, err error) {
 	f = new(Font)
 	f.config = config
 
 	// Resize image to next power-of-two.
 	img = Pow2Image(img).(*image.RGBA)
-	ib := img.Bounds()
+	//ib := img.Bounds()
 
 	// Create the texture itself. It will contain all glyphs.
 	// Individual glyph-quads display a subset of this texture.
-	gl.GenTextures(1, &f.texture)
-	gl.BindTexture(gl.TEXTURE_2D, f.texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(ib.Dx()), int32(ib.Dy()), 0,
-		gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
+	f.texture, f.texturePayload, err = loadTexture(img)
+	if err != nil {
+		return nil, err
+	}
+
+	//gl.GenTextures(1, &f.texture)
+	//gl.BindTexture(gl.TEXTURE_2D, f.texture)
+	//gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	//gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	//gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(ib.Dx()), int32(ib.Dy()), 0,
+	//	gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
 	// Create display lists for each glyph.
-	f.listbase = gl.GenLists(int32(len(config.Glyphs)))
+	//f.listbase = gl.GenLists(int32(len(config.Glyphs)))
 
-	texWidth := float32(ib.Dx())
-	texHeight := float32(ib.Dy())
+	//texWidth := float32(ib.Dx())
+	//texHeight := float32(ib.Dy())
 
-	for index, glyph := range config.Glyphs {
+	for _ /*index*/, glyph := range config.Glyphs {
 		// Update max glyph bounds.
 		if glyph.Width > f.maxGlyphWidth {
 			f.maxGlyphWidth = glyph.Width
@@ -62,7 +63,7 @@ func loadFont(img *image.RGBA, config *FontConfig) (f *Font, err error) {
 		}
 
 		// Quad width/height
-		vw := float32(glyph.Width)
+		/*vw := float32(glyph.Width)
 		vh := float32(glyph.Height)
 
 		// Texture coordinate offsets.
@@ -72,9 +73,9 @@ func loadFont(img *image.RGBA, config *FontConfig) (f *Font, err error) {
 		ty2 := (float32(glyph.Y) + vh) / texHeight
 
 		// Advance width (or height if we render top-to-bottom)
-		adv := float32(glyph.Advance)
+		adv := float32(glyph.Advance)*/
 
-		gl.NewList(f.listbase+uint32(index), gl.COMPILE)
+		/*gl.NewList(f.listbase+uint32(index), gl.COMPILE)
 		{
 			gl.Begin(gl.QUADS)
 			{
@@ -98,10 +99,10 @@ func loadFont(img *image.RGBA, config *FontConfig) (f *Font, err error) {
 				gl.Translatef(0, -adv, 0)
 			}
 		}
-		gl.EndList()
+		gl.EndList()*/
 	}
 
-	err = checkGLError()
+	//err = checkGLError()
 	return
 }
 
@@ -117,13 +118,7 @@ func (f *Font) High() rune { return f.config.High }
 // Glyphs returns the font's glyph descriptors.
 func (f *Font) Glyphs() Charset { return f.config.Glyphs }
 
-// Release releases font resources.
-// A font can no longer be used for rendering after this call completes.
-func (f *Font) Release() {
-	gl.DeleteTextures(1, &f.texture)
-	gl.DeleteLists(f.listbase, int32(len(f.config.Glyphs)))
-	f.config = nil
-}
+func (f *Font) TexturePayload() interface{} { return f.texturePayload }
 
 // Metrics returns the pixel width and height for the given string.
 // This takes the scale and rendering direction of the font into account.
@@ -182,7 +177,7 @@ func (f *Font) advanceSize(line string) int {
 // In order to render multi-line text, it is up to the caller to split
 // the text up into individual lines of adequate length and then call
 // this method for each line seperately.
-func (f *Font) Printf(x, y float32, fs string, argv ...interface{}) error {
+/*func (f *Font) Printf(x, y float32, fs string, argv ...interface{}) error {
 	indices := []rune(fmt.Sprintf(fs, argv...))
 
 	if len(indices) == 0 {
@@ -249,7 +244,7 @@ func (f *Font) Printf(x, y float32, fs string, argv ...interface{}) error {
 	gl.PopMatrix()
 	gl.PopAttrib()
 	return checkGLError()
-}
+}*/
 
 // GlyphBounds returns the largest width and height for any of the glyphs
 // in the font. This constitutes the largest possible bounding box
