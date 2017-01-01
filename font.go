@@ -4,12 +4,15 @@
 
 package gltext
 
-import "image"
+import (
+	"fmt"
+	"image"
+)
 
 // A Font allows rendering of text to an OpenGL context.
 type Font struct {
 	config         *FontConfig // Character set for this font.
-	texture        uint32      // Holds the glyph texture id.
+	textureId      uint32      // Holds the glyph texture id.
 	maxGlyphWidth  int         // Largest glyph width.
 	maxGlyphHeight int         // Largest glyph height.
 	texturePayload interface{} // Texture data populated by LoadTextureFunc
@@ -34,7 +37,7 @@ func loadFont(img *image.RGBA, config *FontConfig, loadTexture LoadTextureFunc) 
 
 	// Create the texture itself. It will contain all glyphs.
 	// Individual glyph-quads display a subset of this texture.
-	f.texture, f.texturePayload, err = loadTexture(img)
+	f.textureId, f.texturePayload, err = loadTexture(img)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +121,11 @@ func (f *Font) High() rune { return f.config.High }
 // Glyphs returns the font's glyph descriptors.
 func (f *Font) Glyphs() Charset { return f.config.Glyphs }
 
+// Texture data populated by LoadTextureFunc
 func (f *Font) TexturePayload() interface{} { return f.texturePayload }
+
+// Texture ID
+func (f *Font) TextureId() uint32 { return f.textureId }
 
 // Metrics returns the pixel width and height for the given string.
 // This takes the scale and rendering direction of the font into account.
@@ -177,11 +184,11 @@ func (f *Font) advanceSize(line string) int {
 // In order to render multi-line text, it is up to the caller to split
 // the text up into individual lines of adequate length and then call
 // this method for each line seperately.
-/*func (f *Font) Printf(x, y float32, fs string, argv ...interface{}) error {
+func (f *Font) Printf(x, y float32, fs string, argv ...interface{}) {
 	indices := []rune(fmt.Sprintf(fs, argv...))
 
 	if len(indices) == 0 {
-		return nil
+		return
 	}
 
 	// Runes form display list indices.
@@ -191,7 +198,7 @@ func (f *Font) advanceSize(line string) int {
 		indices[i] -= low
 	}
 
-	var vp [4]int32
+	/*var vp [4]int32
 	gl.GetIntegerv(gl.VIEWPORT, &vp[0])
 
 	gl.PushAttrib(gl.TRANSFORM_BIT)
@@ -243,8 +250,8 @@ func (f *Font) advanceSize(line string) int {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PopMatrix()
 	gl.PopAttrib()
-	return checkGLError()
-}*/
+	return checkGLError()*/
+}
 
 // GlyphBounds returns the largest width and height for any of the glyphs
 // in the font. This constitutes the largest possible bounding box
