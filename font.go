@@ -12,13 +12,12 @@ import (
 // A Font allows rendering of text to an OpenGL context.
 type Font struct {
 	config         *FontConfig // Character set for this font.
-	textureId      uint32      // Holds the glyph texture id.
 	maxGlyphWidth  int         // Largest glyph width.
 	maxGlyphHeight int         // Largest glyph height.
 	texturePayload interface{} // Texture data populated by LoadTextureFunc
 }
 
-type LoadTextureFunc func(rgba *image.RGBA) (texId uint32, texPayload interface{}, err error)
+type LoadTextureFunc func(rgba *image.RGBA) (texPayload interface{})
 
 // loadFont loads the given font data. This does not deal with font scaling.
 // Scaling should be handled by the independent Bitmap/Truetype loaders.
@@ -37,10 +36,7 @@ func loadFont(img *image.RGBA, config *FontConfig, loadTexture LoadTextureFunc) 
 
 	// Create the texture itself. It will contain all glyphs.
 	// Individual glyph-quads display a subset of this texture.
-	f.textureId, f.texturePayload, err = loadTexture(img)
-	if err != nil {
-		return nil, err
-	}
+	f.texturePayload = loadTexture(img)
 
 	//gl.GenTextures(1, &f.texture)
 	//gl.BindTexture(gl.TEXTURE_2D, f.texture)
@@ -123,9 +119,6 @@ func (f *Font) Glyphs() Charset { return f.config.Glyphs }
 
 // Texture data populated by LoadTextureFunc
 func (f *Font) TexturePayload() interface{} { return f.texturePayload }
-
-// Texture ID
-func (f *Font) TextureId() uint32 { return f.textureId }
 
 // Metrics returns the pixel width and height for the given string.
 // This takes the scale and rendering direction of the font into account.

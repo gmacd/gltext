@@ -6,6 +6,7 @@ package gltext
 
 import (
 	"image"
+	"image/draw"
 	"io"
 	"io/ioutil"
 
@@ -60,6 +61,7 @@ func LoadTruetype(r io.Reader, scale int32, low, high rune, dir Direction, loadT
 
 	rect := image.Rect(0, 0, int(iw), int(ih))
 	img := image.NewRGBA(rect)
+	draw.Draw(img, rect, image.Transparent, image.ZP, draw.Src)
 
 	// Use a freetype context to do the drawing.
 	c := freetype.NewContext()
